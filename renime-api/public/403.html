@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/png" href="/Renime.png" />
+  <title>403 Forbidden · Renime API</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --glass: rgba(255, 255, 255, 0.08);
+      --glass-border: rgba(255, 255, 255, 0.18);
+      --text: #f5f7fb;
+      --muted: rgba(245, 247, 251, 0.7);
+      --accent: #fca5a5;
+      --radius: 24px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      font-family: 'Inter', system-ui, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(900px 500px at 20% 0%, rgba(252, 165, 165, 0.18), transparent 50%),
+        radial-gradient(800px 500px at 90% 80%, rgba(196, 181, 253, 0.12), transparent 45%),
+        #07090f;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      position: relative;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url('/background.jpg');
+      background-size: cover;
+      background-position: center;
+      opacity: 0.18;
+      z-index: 0;
+      pointer-events: none;
+    }
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(7, 9, 15, 0.6), rgba(7, 9, 15, 0.9));
+      z-index: 0;
+      pointer-events: none;
+    }
+    .card {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 420px;
+      padding: 40px 32px;
+      text-align: center;
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      backdrop-filter: blur(22px) saturate(140%);
+      -webkit-backdrop-filter: blur(22px) saturate(140%);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+    .code {
+      font-size: 4rem;
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #fecaca, #f87171);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+    p {
+      color: var(--muted);
+      font-size: 0.92rem;
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 11px 20px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid var(--glass-border);
+      color: var(--text);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.9rem;
+      transition: transform 0.2s ease, background 0.2s ease;
+    }
+    .btn:hover {
+      transform: translateY(-2px);
+      background: rgba(255, 255, 255, 0.16);
+    }
+    .credit {
+      margin-top: 28px;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+    .credit strong { color: var(--text); }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="code">403</div>
+    <h1>Access forbidden</h1>
+    <p>
+      Your origin is not allowed to call this API.
+      Set a valid <code style="color:#fecaca">CORS_ORIGIN</code> or use an approved client.
+    </p>
+    <a class="btn" href="/">Back home</a>
+    <div class="credit">Built by <strong>Dark &amp; Pyro Team</strong></div>
+  </div>
+</body>
+</html>

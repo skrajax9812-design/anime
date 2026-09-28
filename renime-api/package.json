@@ -1,0 +1,65 @@
+{
+  "name": "renime-api",
+  "version": "1.1.0",
+  "description": "Renime API \u2014 Hindi anime multi-provider REST scraper (AnimeSalt + WatchAnimeWorld). Educational use only.",
+  "main": "server.js",
+  "scripts": {
+    "dev": "node --watch server.js",
+    "start": "node server.js",
+    "lint": "eslint src --ext .js",
+    "test": "node test.js"
+  },
+  "keywords": [
+    "scraper",
+    "api",
+    "anime",
+    "restful",
+    "web-scraping",
+    "express",
+    "nodejs",
+    "cheerio",
+    "anime-api",
+    "cartoon-api",
+    "movies-api",
+    "series-api",
+    "data-extraction",
+    "rest-api",
+    "renime",
+    "hindi-anime",
+    "hindi",
+    "dubbed-anime"
+  ],
+  "author": "Dark & Pyro Team",
+  "license": "ISC",
+  "copyright": "Copyright (c) 2025 Dark & Pyro Team. All Rights Reserved.",
+  "disclaimer": "\u26a0\ufe0f LEGAL DISCLAIMER: This API is provided for educational and research purposes only. Users are responsible for ensuring their use complies with all applicable copyright laws and terms of service. The developers do not endorse or facilitate piracy. All content accessed through this API remains the property of its respective copyright holders. Use responsibly and respect intellectual property rights.",
+  "dependencies": {
+    "axios": "^1.6.2",
+    "cheerio": "^1.0.0-rc.12",
+    "compression": "^1.7.4",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "helmet": "^7.1.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "eslint": "^8.56.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "src/",
+    "public/",
+    "server.js",
+    "README.md",
+    "LICENSE",
+    ".env.example"
+  ],
+  "homepage": "https://github.com/itzzzdark/Renime-API",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/itzzzdark/Renime-API"
+  }
+}

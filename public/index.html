@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HindiAnime — Watch Hindi Dubbed Anime Online</title>
+  <meta name="description" content="Hindi dubbed anime dekhein — Naruto, Solo Leveling, Mob Psycho 100 aur bhi. Powered by Renime API + AnimaHD." />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <!-- ===== Header ===== -->
+  <header class="header">
+    <div class="container header-inner">
+      <a href="#" class="logo" id="logo">
+        <span class="logo-icon">🎬</span>
+        <span class="logo-text">Hindi<span class="accent">Anime</span></span>
+      </a>
+
+      <form class="search" id="search-form" autocomplete="off">
+        <input
+          type="search"
+          id="search-input"
+          class="search-input"
+          placeholder="Anime search karo… (Renime API)"
+          aria-label="Search anime"
+        />
+        <button type="submit" class="search-btn">Search</button>
+      </form>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- ===== Search results (Renime API) ===== -->
+    <section class="section hidden" id="search-section">
+      <div class="section-head">
+        <h2 id="search-title">Search Results</h2>
+        <button class="btn-ghost" id="search-back">← Back</button>
+      </div>
+
+      <div id="search-status" class="status hidden"></div>
+      <div class="results-grid" id="search-results"></div>
+
+      <!-- Detail view: info → seasons → episodes → servers -->
+      <div id="detail-panel" class="hidden"></div>
+    </section>
+
+    <!-- ===== Home: 5 anime ===== -->
+    <section class="section" id="home-section">
+      <div class="section-head">
+        <h2>🔥 Abhi Live — 5 Anime</h2>
+        <span class="muted">Hindi Multi-Audio · AnimaHD</span>
+      </div>
+
+      <div class="card-grid" id="anime-grid">
+        <!-- cards injected by app.js -->
+      </div>
+    </section>
+  </main>
+
+  <!-- ===== Player modal ===== -->
+  <div class="modal hidden" id="modal" role="dialog" aria-modal="true">
+    <div class="modal-box">
+      <div class="modal-head">
+        <div class="modal-title-wrap">
+          <h3 id="modal-title">Player</h3>
+          <span class="modal-sub" id="modal-sub"></span>
+        </div>
+        <div class="modal-actions">
+          <a class="btn-small" id="modal-external" href="#" target="_blank" rel="noopener">New tab ↗</a>
+          <button class="modal-close" id="modal-close" aria-label="Close">✕</button>
+        </div>
+      </div>
+
+      <div class="player-frame">
+        <iframe
+          id="player"
+          class="player"
+          src="about:blank"
+          allowfullscreen
+          allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+          referrerpolicy="no-referrer"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
+        ></iframe>
+      </div>
+
+      <div class="modal-hint" id="modal-hint">
+        Player load nahi ho raha? Upar <b>New tab ↗</b> pe click karo.
+      </div>
+
+      <div class="pills" id="modal-pills"></div>
+    </div>
+  </div>
+
+  <!-- ===== Footer ===== -->
+  <footer class="footer">
+    <div class="container footer-inner">
+      <div>
+        <span class="logo-text">Hindi<span class="accent">Anime</span></span>
+        <p class="muted">Hindi dubbed anime catalog — 5 titles abhi live, aur aa rahe hain.</p>
+      </div>
+      <div class="footer-meta muted">
+        Powered by <b>Renime API</b> · Embeds by <b>AnimaHD</b><br />
+        <span class="tiny">Sirf educational/demo purpose. Content ke respective owners ke hain.</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

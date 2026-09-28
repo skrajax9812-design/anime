@@ -1,0 +1,4 @@
+node_modules/
+.env
+renime-api/node_modules/
+renime-api/.env
