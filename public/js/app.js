@@ -6,7 +6,8 @@
 
   const state = {
     catalog: [],
-    current: null, // {title, sub, items:[{label,url}], idx}
+    // {title, sub, items:[{label, url?, servers?:[{name,url}]}], idx, sidx}
+    current: null,
   };
 
   /* ---------- helpers ---------- */
@@ -36,27 +37,52 @@
   const modalTitle = $("#modal-title");
   const modalSub = $("#modal-sub");
   const modalPills = $("#modal-pills");
+  const modalServers = $("#modal-servers");
   const modalExternal = $("#modal-external");
 
+  // item: {label, url} (flat) ya {label, servers:[{name,url}]}
+  function itemServers(item) {
+    if (item.servers && item.servers.length) return item.servers;
+    return item.url ? [{ name: "Server", url: item.url }] : [];
+  }
+
   function openPlayer(config) {
-    // config: {title, sub, items:[{label,url}], idx}
-    state.current = config;
+    // config: {title, sub, items:[{label,url|servers}], idx, sidx}
+    state.current = Object.assign({ idx: 0, sidx: 0 }, config);
     modalTitle.textContent = config.title;
     modalSub.textContent = config.sub || "";
-    playIndex(config.idx || 0);
-    renderPills();
+    renderPlayer();
     show(modal);
     document.body.style.overflow = "hidden";
   }
 
-  function playIndex(i) {
+  function playIndex(i, sidx) {
     const cur = state.current;
     if (!cur || !cur.items[i]) return;
     cur.idx = i;
-    const url = cur.items[i].url;
+    cur.sidx = sidx || 0;
+    renderPlayer();
+  }
+
+  function playServer(j) {
+    const cur = state.current;
+    if (!cur) return;
+    cur.sidx = j;
+    renderPlayer();
+  }
+
+  function renderPlayer() {
+    const cur = state.current;
+    if (!cur) return;
+    const item = cur.items[cur.idx];
+    const servers = itemServers(item);
+    if (!servers.length) return;
+    if (cur.sidx >= servers.length) cur.sidx = 0;
+    const url = servers[cur.sidx].url;
     player.src = url;
     modalExternal.href = url;
     renderPills();
+    renderServerPills(servers);
   }
 
   function renderPills() {
@@ -67,8 +93,20 @@
       const b = document.createElement("button");
       b.className = "pill" + (i === cur.idx ? " active" : "");
       b.textContent = it.label;
-      b.onclick = () => playIndex(i);
+      b.onclick = () => playIndex(i, 0);
       modalPills.appendChild(b);
+    });
+  }
+
+  function renderServerPills(servers) {
+    modalServers.innerHTML = "";
+    if (!servers || servers.length < 2) return;
+    servers.forEach((s, j) => {
+      const b = document.createElement("button");
+      b.className = "pill pill-server" + (j === state.current.sidx ? " active" : "");
+      b.textContent = s.name || `Server ${j + 1}`;
+      b.onclick = () => playServer(j);
+      modalServers.appendChild(b);
     });
   }
 

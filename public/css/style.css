@@ -264,6 +264,9 @@ body {
 }
 .pill:hover { border-color: var(--accent); }
 .pill.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.pills-servers { padding-top: 0; }
+.pill-server { border-style: dashed; }
+.pill-server.active { border-style: solid; }
 
 /* ===== Footer ===== */
 .footer { border-top: 1px solid var(--line); margin-top: 40px; padding: 26px 0 34px; background: var(--bg-2); }
