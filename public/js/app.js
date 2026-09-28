@@ -42,8 +42,9 @@
   const modalHint = $("#modal-hint");
   const DEFAULT_HINT = modalHint.innerHTML;
   const VIDSYNC_HINT =
-    "VidSync chal raha hai — <b>ad-free</b>, aur audio <b>Hindi</b> apne aap select ho jayegi. " +
-    "Manually badalni ho to player ke <b>audio/language menu</b> se choose karo.";
+    "VidSync chal raha hai — <b>ad-free</b>, stream apne aap <b>GogoAnime</b> pe switch hota hai " +
+    "(Moviebox India me hang hota hai) aur audio <b>Hindi</b> auto-select hogi. " +
+    "Manual control chahiye to player ke <b>server / audio menus</b> use karo.";
 
   // item: {label, url} (flat) ya {label, servers:[{name,url}]}
   function itemServers(item) {
@@ -110,6 +111,16 @@
     { lang: "Hindi", language: "Hindi", audio: "Hindi", track: "Hindi", label: "Hindi", name: "Hindi", code: "Hindi", id: "Hindi" },
     { audio: { lang: "hi", language: "hindi", label: "Hindi", name: "Hindi", code: "hin" } },
   ];
+  // Moviebox India me hang hota hai ("Connecting to Moviebox…" stuck) — isliye
+  // stream finder ko GogoAnime (verified working) pe force karte hain. Payload
+  // keys unknown hain, to composite key-coverage variants bhejte hain; jo match
+  // hoga wahi switch hoga, baaki no-op (bridge try/catch me chalta hai).
+  const VS_SERVER_VARIANTS = [
+    { server: "GogoAnime", name: "GogoAnime", provider: "GogoAnime", source: "GogoAnime", label: "GogoAnime", id: "GogoAnime", target: "GogoAnime", value: "GogoAnime" },
+    { server: "gogoanime", name: "gogoanime", provider: "gogoanime", source: "gogoanime", label: "gogoanime", id: "gogoanime", target: "gogoanime", value: "gogoanime" },
+    { server: "Gogo", name: "Gogo", provider: "Gogo", source: "Gogo", label: "Gogo", id: "Gogo", target: "Gogo", value: "Gogo" },
+    { server: { name: "GogoAnime", id: "GogoAnime", label: "GogoAnime" } },
+  ];
   let vsDetach = null;
 
   function isVidSync(url) {
@@ -119,14 +130,19 @@
   function attachVidSync() {
     detachVidSync();
     let timers = [];
-    const post = (payload) => {
+    const postCmd = (command, payload) => {
       try {
         const w = player.contentWindow;
-        if (w) w.postMessage(Object.assign({ type: "VIDSYNC_COMMAND", command: "setAudio" }, payload), "*");
+        if (w) w.postMessage(Object.assign({ type: "VIDSYNC_COMMAND", command: command }, payload), "*");
       } catch (_) {}
     };
     const fireAll = () => {
-      VS_VARIANTS.forEach((v, i) => timers.push(setTimeout(() => post(v), i * 200)));
+      // 1) provider force → GogoAnime (Moviebox skip), 2) Hindi audio, 3) play kick
+      VS_SERVER_VARIANTS.forEach((v, i) =>
+        timers.push(setTimeout(() => postCmd("setServer", v), i * 80)));
+      VS_VARIANTS.forEach((v, i) =>
+        timers.push(setTimeout(() => postCmd("setAudio", v), 600 + i * 200)));
+      timers.push(setTimeout(() => postCmd("play", { autoplay: true }), 1600));
     };
     const scheduleRetries = () => {
       [2500, 7000, 15000].forEach((t) => timers.push(setTimeout(fireAll, t)));
