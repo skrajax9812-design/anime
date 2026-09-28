@@ -42,9 +42,8 @@
   const modalHint = $("#modal-hint");
   const DEFAULT_HINT = modalHint.innerHTML;
   const VIDSYNC_HINT =
-    "VidSync chal raha hai — <b>ad-free</b>, stream apne aap <b>GogoAnime</b> pe switch hota hai " +
-    "(Moviebox India me hang hota hai) aur audio <b>Hindi</b> auto-select hogi. " +
-    "Manual control chahiye to player ke <b>server / audio menus</b> use karo.";
+    "VidSync chal raha hai — <b>ad-free</b>. Hindi availability check ho raha hai; " +
+    "audio ya server manually badalni ho to player ke <b>menus</b> use karo.";
 
   // item: {label, url} (flat) ya {label, servers:[{name,url}]}
   function itemServers(item) {
@@ -90,6 +89,7 @@
     if (isVidSync(url)) {
       attachVidSync();
       modalHint.innerHTML = VIDSYNC_HINT;
+      runVsProbe(url, servers);
     } else {
       detachVidSync();
       modalHint.innerHTML = DEFAULT_HINT;
@@ -98,37 +98,136 @@
     renderServerPills(servers);
   }
 
-  /* ---------- VidSync (vidsync.pro) — ad-free player + Hindi auto-audio ----------
-     vidsync ke embed-bridge me har registered command `try/catch` se chalti hai,
-     aur setAudio ka payload publicly document nahi hai — isliye hum Hindi ko
-     kai safe key-variants me bhejte hain (lang/language/audio/track/label/...).
-     Jo variant player ki audio-list se match karega wahi track switch hoga,
-     baaki silently ignore ho jayenge. READY par + retries (tracks late hydrate
-     hote hain) — user ke manual selection ke baad dobara force nahi karte. */
+  /* ---------- VidSync (vidsync.pro) — ad-free player + Hindi permanent solution ----------
+     vidsync ka apna public API /api/core/streams (CORS *) batata hai ki is episode
+     me Hindi audio track hai ya nahi:
+       • Hindi MILA   → VidSync default rehta hai; setServer usi provider pe
+                         target (Moviebox ka Hindi stream vidsync relay se chalta
+                         hai) + setAudio Hindi battery.
+       • Hindi NAHI   → automatically "Hindi" (AnimeSalt dub) pill pe switch —
+                         guaranteed Hindi dub, bina kisi manual step ke.
+     Player ko postMessage se control: setServer/setAudio ke payload publicly
+     unknown hain, isliye composite key-variants spray hote hain — bridge
+     andar try/catch me sab no-op-safe rakhta hai. READY/ERROR + retries. */
   const VS_VARIANTS = [
     { lang: "hi", language: "hi", audio: "hi", track: "hi", label: "hi", name: "hi", code: "hin", id: "hi" },
     { lang: "hindi", language: "hindi", audio: "hindi", track: "hindi", label: "hindi", name: "hindi", code: "hindi", id: "hindi" },
     { lang: "Hindi", language: "Hindi", audio: "Hindi", track: "Hindi", label: "Hindi", name: "Hindi", code: "Hindi", id: "Hindi" },
     { audio: { lang: "hi", language: "hindi", label: "Hindi", name: "Hindi", code: "hin" } },
   ];
-  // Moviebox India me hang hota hai ("Connecting to Moviebox…" stuck) — isliye
-  // stream finder ko GogoAnime (verified working) pe force karte hain. Payload
-  // keys unknown hain, to composite key-coverage variants bhejte hain; jo match
-  // hoga wahi switch hoga, baaki no-op (bridge try/catch me chalta hai).
-  const VS_SERVER_VARIANTS = [
-    { server: "GogoAnime", name: "GogoAnime", provider: "GogoAnime", source: "GogoAnime", label: "GogoAnime", id: "GogoAnime", target: "GogoAnime", value: "GogoAnime" },
-    { server: "gogoanime", name: "gogoanime", provider: "gogoanime", source: "gogoanime", label: "gogoanime", id: "gogoanime", target: "gogoanime", value: "gogoanime" },
-    { server: "Gogo", name: "Gogo", provider: "Gogo", source: "Gogo", label: "Gogo", id: "Gogo", target: "Gogo", value: "Gogo" },
-    { server: { name: "GogoAnime", id: "GogoAnime", label: "GogoAnime" } },
-  ];
-  let vsDetach = null;
+  let vsTarget = "GogoAnime";   // setServer target (fireAll call-time pe padhta hai)
+  let vsReadySeen = false;
+  let vsFire = null;            // attachVidSync ke andar set hota hai (late probe re-fire)
+  const vsProbeCache = new Map();     // "id:ep" -> {hindi, provider, at} (5 min TTL)
+  const vsAutoSwitched = new Set();   // user ke liye ek baar auto-switch (phir uski marzi)
+
+  function serverVariants(target) {
+    const t = String(target || "GogoAnime");
+    const forms = [t, t.charAt(0).toUpperCase() + t.slice(1), t.toLowerCase()];
+    if (/gogo/i.test(t)) forms.push("GogoAnime", "Gogoanime", "gogoanime");
+    const seen = new Set();
+    const vars = [];
+    forms.forEach((f) => {
+      if (!f || seen.has(f)) return;
+      seen.add(f);
+      vars.push({ server: f, name: f, provider: f, source: f, label: f, id: f, target: f, value: f });
+    });
+    const f0 = t;
+    vars.push({ server: { name: f0, id: t.toLowerCase(), label: f0 } });
+    return vars;
+  }
 
   function isVidSync(url) {
     return /vidsync\.(pro|xyz)/.test(url || "");
   }
 
+  // GET /api/core/streams → { sources[], audioTracks[], providers[] }
+  async function probeVidSyncHindi(url) {
+    const m = /embed\/anime\/(\d+)(?:\/(\d+))?/.exec(url || "");
+    if (!m) return null;
+    const key = m[1] + ":" + (m[2] || "1");
+    const hit = vsProbeCache.get(key);
+    if (hit && Date.now() - hit.at < 300000) return hit;
+    try {
+      const api =
+        "https://vidsync.pro/api/core/streams?type=anime&id=" + m[1] +
+        "&season=1&episode=" + (m[2] || 1);
+      const ctrl = new AbortController();
+      const to = setTimeout(() => ctrl.abort(), 8000);
+      const res = await fetch(api, { signal: ctrl.signal });
+      clearTimeout(to);
+      if (!res.ok) throw new Error(String(res.status));
+      const j = await res.json();
+      const isHi = (v) => {
+        const l = String(v || "").trim().toLowerCase();
+        return l === "hi" || l === "hin" || l === "hindi" || l.includes("hindi");
+      };
+      const langs = new Set();
+      const pushTrack = (t) => {
+        if (!t) return;
+        const l = String(t.language || t.label || "").trim().toLowerCase();
+        if (l) langs.add(l);
+      };
+      (j.audioTracks || []).forEach(pushTrack);
+      let provider = null;
+      (j.sources || []).forEach((s) => {
+        (s.audioTracks || []).forEach((t) => {
+          pushTrack(t);
+          if (!provider && isHi(t.language || t.label)) {
+            provider = (s.provider && (s.provider.name || s.provider.id)) || null;
+          }
+        });
+        if (isHi(s.language || s.audioTrack)) {
+          langs.add(String(s.language || s.audioTrack).toLowerCase());
+          if (!provider) provider = (s.provider && (s.provider.name || s.provider.id)) || null;
+        }
+      });
+      const out = { hindi: [...langs].some(isHi), provider: provider, at: Date.now() };
+      vsProbeCache.set(key, out);
+      return out;
+    } catch (_) {
+      return null; // network/CORS/API fail → silent fallback to default behaviour
+    }
+  }
+
+  async function runVsProbe(url, servers) {
+    vsTarget = "GogoAnime";
+    const res = await probeVidSyncHindi(url);
+    // guards: tab tak hi apply karo jab tak wahi server + wahi default selection
+    const cur = state.current;
+    if (!cur) return;
+    const srv = itemServers(cur.items[cur.idx])[cur.sidx];
+    if (!srv || srv.url !== url || cur.sidx !== 0) return;
+    const key = url;
+    if (res && res.hindi) {
+      vsTarget = res.provider || "Moviebox";
+      modalHint.innerHTML =
+        "VidSync me <b>is episode ka Hindi source mil gaya</b> — audio apne aap " +
+        "<b>Hindi</b> pe switch hoga 🎬 (Moviebox ka Hindi stream vidsync ke apne " +
+        "relay se chalta hai).";
+      if (vsReadySeen && vsFire) vsFire(); // READY pehle ho chuka to abhi re-fire
+      return;
+    }
+    if (res && res.hindi === false && !vsAutoSwitched.has(key)) {
+      const hiIdx = servers.findIndex((s) => /^hindi/i.test(String(s.name || "")));
+      if (hiIdx >= 0) {
+        vsAutoSwitched.add(key);
+        playServer(hiIdx); // → AnimeSalt Hindi dub (guaranteed)
+        modalHint.innerHTML =
+          "VidSync ke sources me <b>is episode ka Hindi nahi hai</b> — apne aap " +
+          "<b>AnimeSalt Hindi Dub</b> pe switch ho gaya ✅. VidSync hi chahiye to " +
+          "upar <b>VidSync</b> pill dabao.";
+        return;
+      }
+      modalHint.innerHTML =
+        "VidSync pe is episode ka Hindi source nahi mila — neeche <b>Hindi</b> " +
+        "pill (AnimeSalt dub) try karo.";
+    }
+  }
+
   function attachVidSync() {
     detachVidSync();
+    vsReadySeen = false;
     let timers = [];
     const postCmd = (command, payload) => {
       try {
@@ -137,8 +236,9 @@
       } catch (_) {}
     };
     const fireAll = () => {
-      // 1) provider force → GogoAnime (Moviebox skip), 2) Hindi audio, 3) play kick
-      VS_SERVER_VARIANTS.forEach((v, i) =>
+      vsReadySeen = true;
+      // 1) provider force (Hindi provider > GogoAnime), 2) Hindi audio, 3) play kick
+      serverVariants(vsTarget).forEach((v, i) =>
         timers.push(setTimeout(() => postCmd("setServer", v), i * 80)));
       VS_VARIANTS.forEach((v, i) =>
         timers.push(setTimeout(() => postCmd("setAudio", v), 600 + i * 200)));
@@ -147,21 +247,25 @@
     const scheduleRetries = () => {
       [2500, 7000, 15000].forEach((t) => timers.push(setTimeout(fireAll, t)));
     };
+    const kick = () => {
+      timers.forEach(clearTimeout);
+      timers = [];
+      fireAll();
+      scheduleRetries();
+    };
     const onMsg = (e) => {
       if (e.source !== player.contentWindow) return;
       const d = e.data;
       if (!d || typeof d !== "object") return;
-      if (d.type === "VIDSYNC_READY" || d.type === "VIDSYNC_ERROR") {
-        timers.forEach(clearTimeout);
-        timers = [];
-        fireAll();
-        scheduleRetries();
-      }
+      if (d.type === "VIDSYNC_READY" || d.type === "VIDSYNC_ERROR") kick();
     };
     window.addEventListener("message", onMsg);
+    vsFire = kick;
     vsDetach = () => {
       window.removeEventListener("message", onMsg);
       timers.forEach(clearTimeout);
+      vsFire = null;
+      vsReadySeen = false;
     };
   }
 
@@ -199,6 +303,8 @@
 
   function closePlayer() {
     detachVidSync();
+    vsAutoSwitched.clear();
+    vsProbeCache.clear();
     hide(modal);
     player.src = "about:blank";
     modalHint.innerHTML = DEFAULT_HINT;
