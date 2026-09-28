@@ -39,6 +39,11 @@
   const modalPills = $("#modal-pills");
   const modalServers = $("#modal-servers");
   const modalExternal = $("#modal-external");
+  const modalHint = $("#modal-hint");
+  const DEFAULT_HINT = modalHint.innerHTML;
+  const VIDSYNC_HINT =
+    "VidSync chal raha hai — <b>ad-free</b>, aur audio <b>Hindi</b> apne aap select ho jayegi. " +
+    "Manually badalni ho to player ke <b>audio/language menu</b> se choose karo.";
 
   // item: {label, url} (flat) ya {label, servers:[{name,url}]}
   function itemServers(item) {
@@ -81,8 +86,74 @@
     const url = servers[cur.sidx].url;
     player.src = url;
     modalExternal.href = url;
+    if (isVidSync(url)) {
+      attachVidSync();
+      modalHint.innerHTML = VIDSYNC_HINT;
+    } else {
+      detachVidSync();
+      modalHint.innerHTML = DEFAULT_HINT;
+    }
     renderPills();
     renderServerPills(servers);
+  }
+
+  /* ---------- VidSync (vidsync.pro) — ad-free player + Hindi auto-audio ----------
+     vidsync ke embed-bridge me har registered command `try/catch` se chalti hai,
+     aur setAudio ka payload publicly document nahi hai — isliye hum Hindi ko
+     kai safe key-variants me bhejte hain (lang/language/audio/track/label/...).
+     Jo variant player ki audio-list se match karega wahi track switch hoga,
+     baaki silently ignore ho jayenge. READY par + retries (tracks late hydrate
+     hote hain) — user ke manual selection ke baad dobara force nahi karte. */
+  const VS_VARIANTS = [
+    { lang: "hi", language: "hi", audio: "hi", track: "hi", label: "hi", name: "hi", code: "hin", id: "hi" },
+    { lang: "hindi", language: "hindi", audio: "hindi", track: "hindi", label: "hindi", name: "hindi", code: "hindi", id: "hindi" },
+    { lang: "Hindi", language: "Hindi", audio: "Hindi", track: "Hindi", label: "Hindi", name: "Hindi", code: "Hindi", id: "Hindi" },
+    { audio: { lang: "hi", language: "hindi", label: "Hindi", name: "Hindi", code: "hin" } },
+  ];
+  let vsDetach = null;
+
+  function isVidSync(url) {
+    return /vidsync\.(pro|xyz)/.test(url || "");
+  }
+
+  function attachVidSync() {
+    detachVidSync();
+    let timers = [];
+    const post = (payload) => {
+      try {
+        const w = player.contentWindow;
+        if (w) w.postMessage(Object.assign({ type: "VIDSYNC_COMMAND", command: "setAudio" }, payload), "*");
+      } catch (_) {}
+    };
+    const fireAll = () => {
+      VS_VARIANTS.forEach((v, i) => timers.push(setTimeout(() => post(v), i * 200)));
+    };
+    const scheduleRetries = () => {
+      [2500, 7000, 15000].forEach((t) => timers.push(setTimeout(fireAll, t)));
+    };
+    const onMsg = (e) => {
+      if (e.source !== player.contentWindow) return;
+      const d = e.data;
+      if (!d || typeof d !== "object") return;
+      if (d.type === "VIDSYNC_READY" || d.type === "VIDSYNC_ERROR") {
+        timers.forEach(clearTimeout);
+        timers = [];
+        fireAll();
+        scheduleRetries();
+      }
+    };
+    window.addEventListener("message", onMsg);
+    vsDetach = () => {
+      window.removeEventListener("message", onMsg);
+      timers.forEach(clearTimeout);
+    };
+  }
+
+  function detachVidSync() {
+    if (vsDetach) {
+      vsDetach();
+      vsDetach = null;
+    }
   }
 
   function renderPills() {
@@ -111,8 +182,10 @@
   }
 
   function closePlayer() {
+    detachVidSync();
     hide(modal);
     player.src = "about:blank";
+    modalHint.innerHTML = DEFAULT_HINT;
     document.body.style.overflow = "";
     state.current = null;
   }
